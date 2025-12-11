@@ -1,0 +1,268 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <link rel="icon" type="image/png" href="favicon.ico">
+    <title>justTalk</title>
+
+    <style>
+      :root {
+        --primary-color: rgb(25, 135, 84);
+        --user-msg-bg: #e0f7ea;
+        --bot-msg-bg: #f1f0f0;
+        --body-bg: #ffffff;
+        --text-color: #333;
+        --font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      }
+
+      * { box-sizing: border-box; }
+
+      body {
+        margin: 0;
+        padding: 0;
+        font-family: var(--font-family);
+        background-color: var(--body-bg);
+        color: var(--text-color);
+        height: 100vh;
+        display: flex;
+        flex-direction: column;
+      }
+
+      .app-container {
+        flex: 1;
+        display: flex;
+        flex-direction: column;
+        max-width: 600px;
+        width: 100%;
+        margin: 0 auto;
+        padding: 10px;
+        padding-bottom: 80px;
+        overflow: hidden;
+      }
+
+      .messages-container {
+        flex: 1;
+        overflow-y: auto;
+        padding-right: 5px;
+      }
+
+      .chat-message-user,
+      .chat-message-robot {
+        display: flex;
+        align-items: flex-start;
+        margin: 8px 0;
+        width: 100%;
+      }
+
+      .chat-message-user { justify-content: flex-end; }
+
+      .chat-message-user .chat-message-text {
+        background-color: var(--user-msg-bg);
+        border-top-right-radius: 0;
+        border-radius: 15px;
+        border-top-right-radius: 0;
+      }
+
+      .chat-message-robot .chat-message-text {
+        background-color: var(--bot-msg-bg);
+        border-top-left-radius: 0;
+        border-radius: 15px;
+      }
+
+      .chat-message-text {
+        padding: 12px 16px;
+        max-width: 80%;
+        word-wrap: break-word;
+        font-size: 1rem;
+      }
+
+      .profile {
+        width: 36px;
+        height: 36px;
+        border-radius: 50%;
+        object-fit: cover;
+      }
+
+      .flex-input {
+        position: fixed;
+        bottom: 0;
+        left: 0;
+        width: 100%;
+        background-color: #fff;
+        border-top: 1px solid #ddd;
+        padding: 1px 10px;
+        padding-top: 30px;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+      }
+
+      .input-wrapper {
+        width: 100%;
+        max-width: 600px;
+        display: flex;
+      }
+
+      .copyright {
+        text-align: center;
+        margin-top: 13px;
+        font-size: 0.8rem;
+        color: #666;
+      }
+
+      .input-field {
+        flex: 1;
+        padding: 12px 15px;
+        border: 1px solid #ccc;
+        border-radius: 20px;
+        font-size: 1rem;
+        outline: none;
+      }
+
+      .send-button {
+        background-color: var(--primary-color);
+        color: white;
+        padding: 12px 20px;
+        margin-left: 8px;
+        border: none;
+        border-radius: 20px;
+        cursor: pointer;
+        font-size: 1rem;
+        transition: background-color 0.2s;
+      }
+
+      .send-button:hover {
+        background-color: rgb(20, 115, 70);
+      }
+
+      @media (max-width: 480px) {
+        .chat-message-text { font-size: 0.9rem; }
+        .input-field { font-size: 0.9rem; }
+        .send-button {
+          font-size: 0.9rem;
+          padding: 10px 16px;
+        }
+      }
+    </style>
+  </head>
+
+  <body>
+    <div class="js-container"></div>
+
+    <script src="https://unpkg.com/supersimpledev/react.js"></script>
+    <script src="https://unpkg.com/supersimpledev/react-dom.js"></script>
+    <script src="https://unpkg.com/supersimpledev/babel.js"></script>
+
+    <script type="text/babel">
+
+      // ------------------------------
+      // SAFE SERVER REQUEST (Vercel)
+      // ------------------------------
+      async function getAIResponse(userMessage) {
+        const response = await fetch("/api/chat", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ message: userMessage })
+        });
+
+        const data = await response.json();
+        return data.reply;
+      }
+
+      // ------------------------------
+      // React Components
+      // ------------------------------
+
+      function Chatinput({ chatMessages, setChatMessages }) {
+        const [inputText, setInputText] = React.useState('');
+
+        function saveInputText(event) {
+          setInputText(event.target.value);
+        }
+
+        async function sendMessage() {
+          if (!inputText.trim()) return;
+
+          const newChatMessage = [
+            ...chatMessages,
+            { message: inputText, sender: 'user', id: crypto.randomUUID() }
+          ];
+
+          setChatMessages(newChatMessage);
+          const userMessage = inputText;
+          setInputText('');
+
+          const aiResponse = await getAIResponse(userMessage);
+
+          setChatMessages([
+            ...newChatMessage,
+            { message: aiResponse, sender: 'robot', id: crypto.randomUUID() }
+          ]);
+        }
+
+        return (
+          <div className="flex-input">
+            <div className="input-wrapper">
+              <input
+                type="text"
+                placeholder="Send a message..."
+                onChange={saveInputText}
+                value={inputText}
+                className="input-field"
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') sendMessage();
+                }}
+              />
+              <button onClick={sendMessage} className="send-button">Send</button>
+            </div>
+
+            <p className="copyright">&copy; Mersen from codeOrbit 2025</p>
+          </div>
+        );
+      }
+
+      function ChatMessage({ message, sender }) {
+        return (
+          <div className={ sender === "user" ? "chat-message-user" : "chat-message-robot" }>
+            {sender === 'robot' && <img src="robot.png" className="profile" alt="bot" />}
+            <div className="chat-message-text">{message}</div>
+            {sender === 'user' && <img src="user.png" className="profile" alt="user" />}
+          </div>
+        );
+      }
+
+      function ChatMessages({ chatMessages }) {
+        const bottomRef = React.useRef(null);
+
+        React.useEffect(() => {
+          bottomRef.current?.scrollIntoView({ behavior: "smooth" });
+        }, [chatMessages]);
+
+        return (
+          <div className="messages-container">
+            {chatMessages.map(msg => (
+              <ChatMessage key={msg.id} message={msg.message} sender={msg.sender} />
+            ))}
+            <div ref={bottomRef} />
+          </div>
+        );
+      }
+
+      function App() {
+        const [chatMessages, setChatMessages] = React.useState([]);
+
+        return (
+          <div className="app-container">
+            <ChatMessages chatMessages={chatMessages} />
+            <Chatinput chatMessages={chatMessages} setChatMessages={setChatMessages} />
+          </div>
+        );
+      }
+
+      const container = document.querySelector('.js-container');
+      ReactDOM.createRoot(container).render(<App />);
+
+    </script>
+  </body>
+</html>
